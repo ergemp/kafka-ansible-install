@@ -1,0 +1,16 @@
+[Unit]
+Description=redpanda service
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target kafka.service
+
+[Service]
+#Type=exec
+Type=simple
+User=kafka
+Group=kafka
+# ExecStartPre=/bin/rm -rf /usr/local/cmak-3006/RUNNING_PID
+ExecStart=/usr/local/redpanda/redpanda-console -config.filepath /usr/local/redpanda/config.yaml
+WorkingDirectory=/usr/local/redpanda
+
+[Install]
+WantedBy=multi-user.target

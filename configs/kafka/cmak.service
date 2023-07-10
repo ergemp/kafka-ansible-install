@@ -1,0 +1,16 @@
+[Unit]
+Description=cmak Service
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target kafka.service
+
+[Service]
+#Type=exec
+Type=simple
+User=kafka
+Group=kafka
+ExecStartPre=/bin/rm -rf /usr/local/cmak-3006/RUNNING_PID
+ExecStart=/usr/local/cmak-3006/bin/cmak -Dconfig-file=/usr/local/cmak-3006/conf/application.conf -Dhttp.port=9000
+WorkingDirectory=/usr/local/cmak-3006
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,11 @@
+
+-- ref: https://www.cyberciti.biz/faq/how-to-install-sshpass-on-macos-os-x/
+
+curl -L -O "https://onboardcloud.dl.sourceforge.net/project/sshpass/sshpass/1.10/sshpass-1.10.tar.gz"
+
+tar -zxvf sshpass-1.10.tar.gz
+
+cd sshpass-1.10
+
+./configure
+sudo make install
