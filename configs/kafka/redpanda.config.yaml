@@ -1,9 +1,9 @@
 # Commented config settings are optional and show the defaults
 kafka:
   brokers:
-    - broker-0.mycompany.com:19092
-    - broker-1.mycompany.com:19092
-    - broker-2.mycompany.com:19092
+    - {{ ip_address }}:9092
+    # - broker-1.mycompany.com:9092
+    # - broker-2.mycompany.com:9092
   # clientId: console
   # rackId: # In multi zone Kafka clusters you can reduce traffic costs by consuming messages from replica brokers in the same zone
   # sasl:

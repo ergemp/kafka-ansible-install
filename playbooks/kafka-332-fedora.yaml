@@ -1,5 +1,5 @@
 - name: Install Kafka Instance (Fedora 37)
-  hosts: dev-kafka-servers
+  hosts: dev_kafka_servers
   # remote_user: kafkauser
   become: yes
   become_user: root
@@ -9,138 +9,142 @@
     # [host1, host2, host3] for cluster installation
     # [host1] for single node installation
     hosts:
-     [10.211.55.3, 10.211.55.4]
+      [192.168.1.112]
   tasks:
-
-  # check system status
-  # if the kafka group exists
-  - name: determine available groups
-    getent:
-      database: group
+    # check system status
     # if the kafka group exists
-  - name: determine available users
-    getent:
-      database: passwd
-    # check if kafka is downloaded
-  - name: determine kafka binaries
-    stat:
-      path: /root/kafka_2.12-3.3.2.tar
-    register: kafka_file
-    # check if kafka is installed
-  - name: determine kafka installation
-    stat:
-      path: /usr/local/kafka-332
-    register: kafka_install
-    # check if cmak is installed
-  - name: determine cmak installation
-    stat:
-      path: /usr/local/cmak-3006
-    register: cmak_install
-    # check if redpanda is installed
-  - name: determine redpanda installation
-    stat:
-      path: /usr/local/redpanda
-    register: redpanda_install
-    # check if redpanda config exists
-  - name: determine redpanda config exists
-    stat:
-      path: /usr/local/redpanda/config.yaml
-    register: redpanda_config
-    # check if the /data/zookeeper directory exists for zookeeper data
-  - name: determine zookeeper data directory
-    stat:
-      path: /data/zookeeper
-    register: zookeeper_data_dir
-    # check if the /data/kafka directory exists for kafka logs
-  - name: determine kafka data directory
-    stat:
-      path: /data/kafka
-    register: kafka_data_dir
-    # check if configuration line of the host exists in zookeeper.config
-  - name: check zookeeper_config_line
-    shell: grep -c "server.{{ node_id }}={{ ip_address }}:2888:3888" /usr/local/kafka-332/config/zookeeper.properties || true
-    register: zookeeper_config_line
-  # end check
+    - name: determine available groups
+      getent:
+        database: group
+      # if the kafka group exists
+    - name: determine available users
+      getent:
+        database: passwd
+      # check if kafka is downloaded
+    - name: determine kafka binaries
+      stat:
+        path: /root/kafka_2.12-3.3.2.tar
+      register: kafka_file
+      # check if kafka is installed
+    - name: determine kafka installation
+      stat:
+        path: /usr/local/kafka-332
+      register: kafka_install
+      # check if cmak is installed
+    - name: determine cmak installation
+      stat:
+        path: /usr/local/cmak-3006
+      register: cmak_install
+      # check if redpanda is installed
+    - name: determine redpanda installation
+      stat:
+        path: /usr/local/redpanda
+      register: redpanda_install
+      # check if redpanda config exists
+    - name: determine redpanda config exists
+      stat:
+        path: /usr/local/redpanda/config.yaml
+      register: redpanda_config
+      # check if the /data directory exists for data
+    - name: determine data directory
+      stat:
+        path: /data
+      register: data_dir
+      # check if the /data/zookeeper directory exists for zookeeper data
+    - name: determine zookeeper data directory
+      stat:
+        path: /data/zookeeper
+      register: zookeeper_data_dir
+      # check if the /data/kafka directory exists for kafka logs
+    - name: determine kafka data directory
+      stat:
+        path: /data/kafka
+      register: kafka_data_dir
+      # check if configuration line of the host exists in zookeeper.config
+    - name: check zookeeper_config_line
+      shell: grep -c "server.{{ node_id }}={{ ip_address }}:2888:3888" /usr/local/kafka-332/config/zookeeper.properties || true
+      register: zookeeper_config_line
+    # end check
 
-    # create the kafka linux user and group if they do not exist
-  - name: create kafka group and user
-    shell: |
-      groupadd kafka
-      useradd -G kafka -g kafka kafka
-    when:
-      - "'kafka' not in ansible_facts.getent_group"
-      - "'kafka' not in ansible_facts.getent_passwd"
+      # create the kafka linux user and group if they do not exist
+    - name: create kafka group and user
+      shell: |
+        groupadd kafka
+        useradd -G kafka -g kafka kafka
+      when:
+        - "'kafka' not in ansible_facts.getent_group"
+        - "'kafka' not in ansible_facts.getent_passwd"
 
-    # install jdk 11
-  - name: Install JDK 11
-    ansible.builtin.yum:
-      name: "{{ packages }}"
-      state: present
-    vars:
-      packages:
-        - java-11-openjdk.aarch64
+      # install jdk 11
+    - name: Install JDK 11
+      ansible.builtin.yum:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - java-11-openjdk.aarch64
 
-    # install extra packages if needed
-  - name: Install extra packages
-    ansible.builtin.yum:
-      name: "{{ packages }}"
-      state: present
-    vars:
-      packages:
-        - zip
+      # install extra packages if needed
+    - name: Install extra packages
+      ansible.builtin.yum:
+        name: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - zip
 
-  - name: "stop and disable firewalld"
-    service:
-      name: firewalld
-      state: stopped
-      enabled: False
+    - name: "stop and disable firewalld"
+      service:
+        name: firewalld
+        state: stopped
+        enabled: False
 
-  - name: "disable selinux"
-    ansible.posix.selinux:
-            state: disabled
+    - name: "disable selinux"
+      ansible.posix.selinux:
+              state: disabled
 
-  - name: "reboot the host"
-    ansible.builtin.reboot:
-      reboot_timeout: 300
+    - name: "reboot the host"
+      ansible.builtin.reboot:
+        reboot_timeout: 300
 
-    # download kafka, cmak, zkui binaries
-  - name: Download Binaries
-    shell: |
-      cd /root
-      wget https://archive.apache.org/dist/kafka/3.3.2/kafka_2.12-3.3.2.tgz           
-      wget https://github.com/yahoo/CMAK/releases/download/3.0.0.6/cmak-3.0.0.6.zip
-      wget https://github.com/DeemOpen/zkui/archive/refs/heads/master.zip
-      wget https://github.com/redpanda-data/console/releases/download/v2.2.4/redpanda_console_2.2.4_linux_64-bit-arm.tar.gz
-    when: not kafka_file.stat.exists
+      # download kafka, cmak, zkui binaries
+    - name: Download Binaries
+      shell: |
+        cd /root
+        wget https://archive.apache.org/dist/kafka/3.3.2/kafka_2.12-3.3.2.tgz           
+        wget https://github.com/yahoo/CMAK/releases/download/3.0.0.6/cmak-3.0.0.6.zip
+        wget https://github.com/DeemOpen/zkui/archive/refs/heads/master.zip
+        wget https://github.com/redpanda-data/console/releases/download/v2.2.4/redpanda_console_2.2.4_linux_64-bit-arm.tar.gz
+      when: not kafka_file.stat.exists
 
-    # download jmx exporter binaries and config
-  - name: Download Binaries
-    shell: |
-      cd /root
-      wget https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.19.0/jmx_prometheus_javaagent-0.19.0.jar
-      wget https://raw.githubusercontent.com/prometheus/jmx_exporter/master/example_configs/kafka-2_0_0.yml    
+      # download jmx exporter binaries and config
+    - name: Download Binaries
+      shell: |
+        cd /root
+        wget https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.19.0/jmx_prometheus_javaagent-0.19.0.jar
+        wget https://raw.githubusercontent.com/prometheus/jmx_exporter/master/example_configs/kafka-2_0_0.yml    
 
-    # install kafka
-    # unzip the binaries and copy them to /usr/local/
-  - name: Install Kafka
-    shell: |
-      cd /root
-      gunzip /root/kafka_2.12-3.3.2.tgz
-      tar -xvf /root/kafka_2.12-3.3.2.tar
-      mv /root/kafka_2.12-3.3.2 /usr/local/kafka-332
-    when: not kafka_install.stat.exists
+      # install kafka
+      # unzip the binaries and copy them to /usr/local/
+    - name: Install Kafka
+      shell: |
+        cd /root
+        gunzip /root/kafka_2.12-3.3.2.tgz
+        tar -xvf /root/kafka_2.12-3.3.2.tar
+        mv /root/kafka_2.12-3.3.2 /usr/local/kafka-332
+      when: not kafka_install.stat.exists
 
-    # install cmak
-    # unzip the binaries and copy them to /usr/local/
-  - name: install cmak
-    shell: |
-      cd /root
-      unzip /root/cmak-3.0.0.6.zip
-      mv /root/cmak-3.0.0.6 /usr/local/cmak-3006
-    when: not cmak_install.stat.exists
+      # install cmak
+      # unzip the binaries and copy them to /usr/local/
+    - name: install cmak
+      shell: |
+        cd /root
+        unzip /root/cmak-3.0.0.6.zip
+        mv /root/cmak-3.0.0.6 /usr/local/cmak-3006
+      when: not cmak_install.stat.exists
 
-  - # install redpanda-console
-    # unzip the binaries and copy them to /usr/local/
+      # install redpanda-console
+      # unzip the binaries and copy them to /usr/local/
     - name: Install redpanda console
       shell: |
         cd /root
@@ -148,141 +152,165 @@
         tar -xvf /root/redpanda_console_2.2.4_linux_64-bit-arm.tar
         mkdir /usr/local/redpanda
         mv /root/redpanda-console /usr/local/redpanda/.
-      when: not redpanda.stat.exists
+      when: not redpanda_install.stat.exists
 
-    # install jmx exporter
-    # unzip the binaries and copy them to /usr/local/
-  - name: install jmx exporter
-    shell: |
-      cd /root
-      mkdir /usr/local/jmx-exporter
-      mv /root/jmx_prometheus_javaagent-0.19.0.jar /usr/local/jmx-exporter/.
-      mv /root/kafka-2_0_0.yml /usr/local/jmx-exporter/.    
+      # install jmx exporter
+      # unzip the binaries and copy them to /usr/local/
+    - name: install jmx exporter
+      shell: |
+        cd /root
+        mkdir /usr/local/jmx-exporter
+        mv /root/jmx_prometheus_javaagent-0.19.0.jar /usr/local/jmx-exporter/.
+        mv /root/kafka-2_0_0.yml /usr/local/jmx-exporter/.    
 
-    # backup the original config files as .org
-  - name: backing config files
-    shell: |
-      mv /usr/local/kafka-332/config/zookeeper.properties /usr/local/kafka-332/config/zookeeper.properties.org
-      mv /usr/local/kafka-332/config/server.properties /usr/local/kafka-332/config/server.properties.org
-      mv /usr/local/kafka-332/bin/kafka-server-start.sh /usr/local/kafka-332/bin/kafka-server-start.sh.org 
-      mv /usr/local/cmak-3006/conf/application.conf /usr/local/cmak-3006/conf/application.conf.org
-    when: not kafka_install.stat.exists
+      # backup the original config files as .org
+    - name: backing config files
+      shell: |
+        mv /usr/local/kafka-332/config/zookeeper.properties /usr/local/kafka-332/config/zookeeper.properties.org
+        mv /usr/local/kafka-332/config/server.properties /usr/local/kafka-332/config/server.properties.org
+        mv /usr/local/kafka-332/bin/kafka-server-start.sh /usr/local/kafka-332/bin/kafka-server-start.sh.org 
+        mv /usr/local/cmak-3006/conf/application.conf /usr/local/cmak-3006/conf/application.conf.org
+      when: not kafka_install.stat.exists
 
-    # copy the zookeeper.properties file to remote
-  - name: copying zookeeper config
-    copy:
-      src: "{{ playbook_dir }}/../configs/kafka/zookeeper.properties"
-      dest: /usr/local/kafka-332/config/zookeeper.properties
+      # copy the zookeeper.properties file to remote
+    - name: copying zookeeper config
+      copy:
+        src: "{{ playbook_dir }}/../configs/kafka/zookeeper.properties"
+        dest: /usr/local/kafka-332/config/zookeeper.properties
 
-    # add all hosts to the zookeeper.config file (if not exists)
+      # add all hosts to the zookeeper.config file (if not exists)
 
-  #- name: add this host to zookeeper config
-  #  lineinfile:
-  #    dest: /usr/local/kafka-332/config/zookeeper.properties
-  #    line: "server.{{ node_id }}={{ ip_address }}:2888:3888"
-  #    owner: kafka
-  #  when: zookeeper_config_line.stdout == "0"
+    #- name: add this host to zookeeper config
+    #  lineinfile:
+    #    dest: /usr/local/kafka-332/config/zookeeper.properties
+    #    line: "server.{{ node_id }}={{ ip_address }}:2888:3888"
+    #    owner: kafka
+    #  when: zookeeper_config_line.stdout == "0"
 
-  - name: add all hosts to zookeeper config
-    lineinfile:
-      dest: /usr/local/kafka-332/config/zookeeper.properties
-      line: "server.{{ loop_node_id }}={{ item }}:2888:3888"
-      create: true
-    loop: "{{ hosts | default([]) }}"
-    loop_control:
-      index_var: loop_node_id
+    - name: add all hosts to zookeeper config
+      lineinfile:
+        dest: /usr/local/kafka-332/config/zookeeper.properties
+        line: "server.{{ loop_node_id }}={{ item }}:2888:3888"
+        create: true
+      loop: "{{ hosts | default([]) }}"
+      loop_control:
+        index_var: loop_node_id
+      when: zookeeper_config_line.stdout == "0"
 
-    # copy server.properties for kafka
-    # copy with template jinja scripts are going to be altered with the actual server_ip and node_id
-  - name: copying kafka config
-    template:
-      src: "{{ playbook_dir }}/../configs/kafka/server.properties"
-      dest: /usr/local/kafka-332/config/server.properties
+      # copy server.properties for kafka
+      # copy with template jinja scripts are going to be altered with the actual server_ip and node_id
+    - name: copying kafka config
+      template:
+        src: "{{ playbook_dir }}/../configs/kafka/server.properties"
+        dest: /usr/local/kafka-332/config/server.properties
 
-    # copy kafka-server-start.sh
-    # copy with template jinja scripts are going to be altered with the actual server_ip for jmx
-  - name: copying kafka runner
-    template:
-      src: "{{ playbook_dir }}/../configs/kafka/kafka-server-start.sh"
-      dest: /usr/local/kafka-332/bin/kafka-server-start.sh
+      # copy kafka-server-start.sh
+      # copy with template jinja scripts are going to be altered with the actual server_ip for jmx
+    - name: copying kafka runner
+      template:
+        src: "{{ playbook_dir }}/../configs/kafka/kafka-server-start.sh"
+        dest: /usr/local/kafka-332/bin/kafka-server-start.sh
 
-    # copy application.conf file for cmak
-    # copy with template jinja scripts are going to be altered with the actual server_ip and node_id
-  - name: copying cmak config
-    template:
-      src: "{{ playbook_dir }}/../configs/kafka/cmak.application.conf"
-      dest: /usr/local/cmak-3006/conf/application.conf
+      # copy application.conf file for cmak
+      # copy with template jinja scripts are going to be altered with the actual server_ip and node_id
+    - name: copying cmak config
+      template:
+        src: "{{ playbook_dir }}/../configs/kafka/cmak.application.conf"
+        dest: /usr/local/cmak-3006/conf/application.conf
 
-    # copy config.yaml file for redpanda
-    # there is no jinja in this config.yaml
-    # configure manually after the installation
-  - name: copying redpanda config
-    copy:
-      src: "{{ playbook_dir }}/../configs/kafka/redpanda.config.yaml"
-      dest: /usr/local/redpanda/config.yaml
+      # copy config.yaml file for redpanda
+      # there is no jinja in this config.yaml
+      # configure manually after the installation
 
-    # create the /data/zookeeper directory if not exists
-  - name: create zookeeper data directory
-    shell: |
-      mkdir /data/zookeeper
-    when: not zookeeper_data_dir.stat.exists
+    #- name: copying redpanda config
+    #  copy:
+    #    src: "{{ playbook_dir }}/../configs/kafka/redpanda.config.yaml"
+    #    dest: /usr/local/redpanda/config.yaml
 
-    # create the /data/kafka directory if not exists
-    # if a seperate mountpoint needed, arrange before running this ansible script
-  - name: create kafka data directory
-    shell: |
-      mkdir /data/kafka
-    when: not kafka_data_dir.stat.exists
+    - name: copying redpanda config
+      template:
+        src: "{{ playbook_dir }}/../configs/kafka/redpanda.config.yaml"
+        dest: /usr/local/redpanda/config.yaml
 
-    # create the myid file within the zookeeper data directory
-  - name: configure myid in zookeeper data directory
-    shell: |      
-      echo {{ node_id }} > /data/zookeeper/myid
+      # create the /data/zookeeper directory if not exists
+    - name: create data directory
+      shell: |
+        mkdir /data
+      when: not data_dir.stat.exists
 
-    # grant ownerships of the created directories
-  - name: set kafka ownership to kafka user
-    shell: |
-      chown -R kafka:kafka /usr/local/kafka-332
-      chown -R kafka:kafka /usr/local/cmak-3006
-      chown -R kafka:kafka /usr/local/redpanda
-      chown -R kafka:kafka /usr/local/jmx-exporter
-      chown -R kafka:kafka /data    
-      chmod 755 /usr/local/kafka-332/bin/kafka-server-start.sh
+      # create the /data/zookeeper directory if not exists
+    - name: create zookeeper data directory
+      shell: |
+        mkdir /data/zookeeper
+      when: not zookeeper_data_dir.stat.exists
 
-    # copy systemctl service files to host
-  - name: copying zookeeper service config
-    copy:
-      src: "{{ playbook_dir }}/../configs/kafka/zookeeper.service"
-      dest: /etc/systemd/system/zookeeper.service
+      # create the /data/kafka directory if not exists
+      # if a seperate mountpoint needed, arrange before running this ansible script
+    - name: create kafka data directory
+      shell: |
+        mkdir /data/kafka
+      when: not kafka_data_dir.stat.exists
 
-  - name: copying kafka service config
-    copy:
-      src: "{{ playbook_dir }}/../configs/kafka/kafka.service"
-      dest: /etc/systemd/system/kafka.service
+      # create the myid file within the zookeeper data directory
+    - name: configure myid in zookeeper data directory
+      shell: |      
+        echo {{ node_id }} > /data/zookeeper/myid
 
-  - name: copying cmak service config
-    copy:
-      src: "{{ playbook_dir }}/../configs/kafka/cmak.service"
-      dest: /etc/systemd/system/cmak.service
+      # grant ownerships of the created directories
+    - name: set kafka ownership to kafka user
+      shell: |
+        chown -R kafka:kafka /usr/local/kafka-332
+        chown -R kafka:kafka /usr/local/cmak-3006
+        chown -R kafka:kafka /usr/local/redpanda
+        chown -R kafka:kafka /usr/local/jmx-exporter
+        chown -R kafka:kafka /data    
+        chmod 755 /usr/local/kafka-332/bin/kafka-server-start.sh
 
-    # start systemctl services
-  - name: starting zookeeper with service
-    ansible.builtin.service:
-      name: "zookeeper.service"
-      enabled: true
-      state: started
+      # copy systemctl service files to host
+    - name: copying zookeeper service config
+      copy:
+        src: "{{ playbook_dir }}/../configs/kafka/zookeeper.service"
+        dest: /etc/systemd/system/zookeeper.service
 
-  - name: starting kafka with service
-    ansible.builtin.service:
-      name: "kafka.service"
-      enabled: true
-      state: started
+    - name: copying kafka service config
+      copy:
+        src: "{{ playbook_dir }}/../configs/kafka/kafka.service"
+        dest: /etc/systemd/system/kafka.service
 
-  - name: starting cmak with service
-    ansible.builtin.service:
-      name: "cmak.service"
-      enabled: true
-      state: started
+    - name: copying cmak service config
+      copy:
+        src: "{{ playbook_dir }}/../configs/kafka/cmak.service"
+        dest: /etc/systemd/system/cmak.service
+
+    - name: copying redpanda service config
+      copy:
+        src: "{{ playbook_dir }}/../configs/kafka/redpanda.service"
+        dest: /etc/systemd/system/redpanda.service
+
+      # start systemctl services
+    - name: starting zookeeper with service
+      ansible.builtin.service:
+        name: "zookeeper.service"
+        enabled: true
+        state: started
+
+    - name: starting kafka with service
+      ansible.builtin.service:
+        name: "kafka.service"
+        enabled: true
+        state: started
+
+    - name: starting cmak with service
+      ansible.builtin.service:
+        name: "cmak.service"
+        enabled: true
+        state: started
+
+    - name: starting redpanda with service
+      ansible.builtin.service:
+        name: "redpanda.service"
+        enabled: true
+        state: started
 
 
 
