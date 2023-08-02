@@ -9,7 +9,7 @@
     # [host1, host2, host3] for cluster installation
     # [host1] for single node installation
     hosts:
-      [192.168.1.112]
+      [192.168.1.134, 192.168.1.135, 192.168.1.137]
   tasks:
     # check system status
     # if the kafka group exists
@@ -195,7 +195,7 @@
       loop: "{{ hosts | default([]) }}"
       loop_control:
         index_var: loop_node_id
-      when: zookeeper_config_line.stdout == "0"
+      # when: zookeeper_config_line.stdout == "0"
 
       # copy server.properties for kafka
       # copy with template jinja scripts are going to be altered with the actual server_ip and node_id
