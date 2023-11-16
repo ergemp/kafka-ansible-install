@@ -101,13 +101,13 @@ kafka:
   #   maxRetryInterval 60s
   #   backoffMultiplier: 2
 
-# connect:
-#   enabled: false
+connect:
+  enabled: true
 #   # An empty array for clusters is the default, but you have to specify at least one cluster, as soon as
 #   # you enable Kafka connect. Otherwise you'll not be able to start Console.
-#   clusters: []
-#     - name: xy
-#       url: http://my-cluster:8083
+  clusters:
+    - name: xy
+      url: http://{{ ip_address }}:8083
 #       tls:
 #         enabled: false # Trusted certificates are still allowed if TLS is not enabled.
 #         # caFilepath:
@@ -117,9 +117,9 @@ kafka:
 #       username:
 #       password: # This can be set via the via the --connect.clusters.i.password flag as well (i to be replaced with the array index)
 #       token: # This can be set via the via the --connect.clusters.i.token flag as well (i to be replaced with the array index)
-#   connectTimeout: 15s # used to test cluster connectivity
-#   readTimeout: 60s    # overall REST timeout
-#   requestTimeout: 6s  # timeout for REST requests
+  connectTimeout: 15s # used to test cluster connectivity
+  readTimeout: 60s    # overall REST timeout
+  requestTimeout: 6s  # timeout for REST requests
 
 # console:
 #   # Config to use for embedded topic documentation, see /docs/features/topic-documentation.md for more details

@@ -1,4 +1,4 @@
-- name: Install Kafka Instance (Fedora 37)
+- name: Install Kafka Instance (centos 9)
   hosts: kafka_servers
   # remote_user: kafkauser
   become: yes
@@ -9,7 +9,7 @@
     # [host1, host2, host3] for cluster installation
     # [host1] for single node installation
     hosts:
-      [10.211.55.9,10.211.55.10,10.211.55.11]
+      [10.211.55.20,10.211.55.21,10.211.55.22]
   tasks:
     # check system status
     # if the kafka group exists
@@ -92,6 +92,9 @@
       vars:
         packages:
           - zip
+          - wget
+          - curl
+          - tar
 
     - name: "stop and disable firewalld"
       service:
@@ -114,7 +117,8 @@
         wget https://archive.apache.org/dist/kafka/3.3.2/kafka_2.12-3.3.2.tgz           
         wget https://github.com/yahoo/CMAK/releases/download/3.0.0.6/cmak-3.0.0.6.zip
         wget https://github.com/DeemOpen/zkui/archive/refs/heads/master.zip
-        wget https://github.com/redpanda-data/console/releases/download/v2.2.4/redpanda_console_2.2.4_linux_64-bit-arm.tar.gz
+        # wget https://github.com/redpanda-data/console/releases/download/v2.2.4/redpanda_console_2.2.4_linux_64-bit-arm.tar.gz
+        wget https://github.com/redpanda-data/console/releases/download/v2.3.5/redpanda_console_2.3.5_linux_arm64.tar.gz
       when: not kafka_file.stat.exists
 
       # download jmx exporter binaries and config
@@ -148,8 +152,8 @@
     - name: Install redpanda console
       shell: |
         cd /root
-        gunzip /root/redpanda_console_2.2.4_linux_64-bit-arm.tar.gz
-        tar -xvf /root/redpanda_console_2.2.4_linux_64-bit-arm.tar
+        gunzip /root/redpanda_console_2.3.5_linux_arm64.tar.gz
+        tar -xvf /root/redpanda_console_2.3.5_linux_arm64.tar
         mkdir /usr/local/redpanda
         mv /root/redpanda-console /usr/local/redpanda/.
       when: not redpanda_install.stat.exists
@@ -168,6 +172,7 @@
       shell: |
         mv /usr/local/kafka-332/config/zookeeper.properties /usr/local/kafka-332/config/zookeeper.properties.org
         mv /usr/local/kafka-332/config/server.properties /usr/local/kafka-332/config/server.properties.org
+        mv /usr/local/kafka-332/config/connect-distributed.properties /usr/local/kafka-332/config/connect-distributed.properties.org
         mv /usr/local/kafka-332/bin/kafka-server-start.sh /usr/local/kafka-332/bin/kafka-server-start.sh.org 
         mv /usr/local/cmak-3006/conf/application.conf /usr/local/cmak-3006/conf/application.conf.org
       when: not kafka_install.stat.exists
@@ -203,6 +208,13 @@
       template:
         src: "{{ playbook_dir }}/../configs/kafka/server.properties"
         dest: /usr/local/kafka-332/config/server.properties
+
+      # copy connect-distributed.properties for kafka
+      # copy with template jinja scripts are going to be altered with the actual server_ip and node_id
+    - name: copying connect-distributed config
+      template:
+        src: "{{ playbook_dir }}/../configs/kafka/connect-distributed.properties"
+        dest: /usr/local/kafka-332/config/connect-distributed.properties
 
       # copy kafka-server-start.sh
       # copy with template jinja scripts are going to be altered with the actual server_ip for jmx
@@ -277,6 +289,11 @@
         src: "{{ playbook_dir }}/../configs/kafka/kafka.service"
         dest: /etc/systemd/system/kafka.service
 
+    - name: copying kafka-connect service config
+      copy:
+        src: "{{ playbook_dir }}/../configs/kafka/kafka-connect.service"
+        dest: /etc/systemd/system/kafka-connect.service
+
     - name: copying cmak service config
       copy:
         src: "{{ playbook_dir }}/../configs/kafka/cmak.service"
@@ -297,6 +314,12 @@
     - name: starting kafka with service
       ansible.builtin.service:
         name: "kafka.service"
+        enabled: true
+        state: started
+
+    - name: starting kafka-connect with service
+      ansible.builtin.service:
+        name: "kafka-connect.service"
         enabled: true
         state: started
 

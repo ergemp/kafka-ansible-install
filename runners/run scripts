@@ -1,7 +1,7 @@
 # test inventory
-ansible-inventory -i inventory/dev-kafka.ini --list
-ansible all -i inventory/dev-kafka.ini -m ping
+ansible-inventory -i inventory/dev_kafka_centos.ini --list
+ansible all -i inventory/dev_kafka_centos.ini -m ping
 
 # install kafka on fedora with ssh username/pass
-ansible-playbook -i inventory/dev-kafka.ini playbooks/kafka-332-fedora.yaml --ask-pass
+ansible-playbook -i inventory/dev_kafka_centos.ini playbooks/kafka-332-centos.yaml --ask-pass
 
