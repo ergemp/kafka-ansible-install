@@ -9,3 +9,11 @@ cd sshpass-1.10
 
 ./configure
 sudo make install
+
+-- ref: https://docs.ansible.com/projects/ansible/latest/reference_appendices/config.html
+-- then for disable key-checking
+ansible-config init --disabled > ansible.cfg
+
+-- alter the config file
+vi ansible.cfg
+host_key_checking = False

@@ -1,7 +1,56 @@
 # test inventory
-ansible-inventory -i inventory/dev_kafka_centos.ini --list
-ansible all -i inventory/dev_kafka_centos.ini -m ping
+ansible-inventory -i invento
+ry/dev_kafka_centos.ini --list
+(.venv) ergemp@ergempMMINI kafka-ansible-install % ansible-inventory -i inventory/dev_kafka_centos.ini --list
+{
+    "_meta": {
+        "hostvars": {
+            "192.168.56.2": {
+                "ansible_connection": "ssh",
+                "ansible_pass": "root",
+                "ansible_user": "root",
+                "ip_address": "192.168.56.2",
+                "node_id": 0
+            },
+            "192.168.56.3": {
+                "ansible_connection": "ssh",
+                "ansible_pass": "root",
+                "ansible_user": "root",
+                "ip_address": "192.168.56.3",
+                "node_id": 1
+            },
+            "192.168.56.4": {
+                "ansible_connection": "ssh",
+                "ansible_pass": "root",
+                "ansible_user": "root",
+                "ip_address": "192.168.56.4",
+                "node_id": 2
+            }
+        }
+    },
+    "all": {
+        "children": [
+            "ungrouped",
+            "kafka_servers"
+        ]
+    },
+    "kafka_servers": {
+        "hosts": [
+            "192.168.56.2",
+            "192.168.56.3",
+            "192.168.56.4"
+        ]
+    }
+}
+
+
+ansible all -i inventory/dev_kafka_centos.ini -m ping --ask-pass
 
 # install kafka on fedora with ssh username/pass
 ansible-playbook -i inventory/dev_kafka_centos.ini playbooks/kafka-332-centos.yaml --ask-pass
 
+
+
+ansible-playbook -i inventory/dev_kafka_centos.ini playbooks/kafka-332-centos-kraft.yaml --ask-pass
+
+ansible-playbook -i inventory/dev_kafka_centos.ini playbooks/kafka-332-centos-kraft.yaml --ask-pass

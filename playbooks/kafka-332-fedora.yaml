@@ -224,12 +224,12 @@
 
     #- name: copying redpanda config
     #  copy:
-    #    src: "{{ playbook_dir }}/../configs/kafka/redpanda.config.yaml"
+    #    src: "{{ playbook_dir }}/../configs/kafka/redpanda.235.config.yaml"
     #    dest: /usr/local/redpanda/config.yaml
 
     - name: copying redpanda config
       template:
-        src: "{{ playbook_dir }}/../configs/kafka/redpanda.config.yaml"
+        src: "{{ playbook_dir }}/../configs/kafka/redpanda.235.config.yaml"
         dest: /usr/local/redpanda/config.yaml
 
       # create the /data/zookeeper directory if not exists
