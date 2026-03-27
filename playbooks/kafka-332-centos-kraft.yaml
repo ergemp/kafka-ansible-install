@@ -9,12 +9,11 @@
     # [host1, host2, host3] for cluster installation
     # [host1] for single node installation
     hosts:
-      [192.168.56.2,192.168.56.3,192.168.56.4]
+      [192.168.56.3,192.168.56.4,192.168.56.5]
     kafka_cluster_id:
-      "{{ 123456789 | to_uuid | b64encode }}"
-      #to_uuid(namespace='11111111-2222-3333-4444-555555555555')
+      "{{ 12345678 | to_uuid | b64encode }}"
     kafka_controller_quorum_voters:
-      "0@192.168.56.2:9093,1@192.168.56.3:9093,2@192.168.56.4:9093"
+      "0@192.168.56.3:9093,1@192.168.56.4:9093,2@192.168.56.5:9093"
 
   tasks:
     # check system status
@@ -36,11 +35,6 @@
       stat:
         path: /usr/local/kafka-332
       register: kafka_install
-      # check if cmak is installed
-    - name: determine cmak installation
-      stat:
-        path: /usr/local/cmak-3006
-      register: cmak_install
       # check if redpanda is installed
     - name: determine redpanda installation
       stat:
@@ -68,7 +62,7 @@
       register: jmx_exporter_dir
     # end check
 
-      # create the kafka linux user and group if they do not exist
+    # create the kafka linux user and group if they do not exist
     - name: create kafka group and user
       shell: |
         groupadd kafka
@@ -108,17 +102,15 @@
       ansible.posix.selinux:
         state: disabled
 
-    #- name: "reboot the host"
-    #  ansible.builtin.reboot:
-    #    reboot_timeout: 300
+    - name: "reboot the host"
+      ansible.builtin.reboot:
+        reboot_timeout: 300
 
-      # download kafka, cmak, zkui, redpanda binaries
+      # download kafka, redpanda binaries
     - name: Download Binaries
       shell: |
         cd /root
-        wget https://archive.apache.org/dist/kafka/3.3.2/kafka_2.12-3.3.2.tgz           
-        wget https://github.com/yahoo/CMAK/releases/download/3.0.0.6/cmak-3.0.0.6.zip
-        wget https://github.com/DeemOpen/zkui/archive/refs/heads/master.zip      
+        wget https://archive.apache.org/dist/kafka/3.3.2/kafka_2.12-3.3.2.tgz        
         wget https://github.com/redpanda-data/console/releases/download/v3.6.0/redpanda_console_3.6.0_linux_arm64.tar.gz
       when: not kafka_file.stat.exists
 
@@ -139,15 +131,6 @@
         tar -xvf /root/kafka_2.12-3.3.2.tar
         mv /root/kafka_2.12-3.3.2 /usr/local/kafka-332
       when: not kafka_install.stat.exists
-
-      # install cmak
-      # unzip the binaries and copy them to /usr/local/
-    - name: install cmak
-      shell: |
-        cd /root
-        unzip /root/cmak-3.0.0.6.zip
-        mv /root/cmak-3.0.0.6 /usr/local/cmak-3006
-      when: not cmak_install.stat.exists
 
       # install redpanda-console
       # unzip the binaries and copy them to /usr/local/
@@ -177,7 +160,6 @@
         mv /usr/local/kafka-332/config/kraft/server.properties /usr/local/kafka-332/config/kraft/server.properties.org
         mv /usr/local/kafka-332/config/connect-distributed.properties /usr/local/kafka-332/config/connect-distributed.properties.org
         mv /usr/local/kafka-332/bin/kafka-server-start.sh /usr/local/kafka-332/bin/kafka-server-start.sh.org 
-        mv /usr/local/cmak-3006/conf/application.conf /usr/local/cmak-3006/conf/application.conf.org
       when: not kafka_install.stat.exists
 
       # copy server.properties for kafka
@@ -201,33 +183,19 @@
         src: "{{ playbook_dir }}/../configs/kafka/kraft/kafka-server-start.sh"
         dest: /usr/local/kafka-332/bin/kafka-server-start.sh
 
-      # copy application.conf file for cmak
-      # copy with template jinja scripts are going to be altered with the actual server_ip and node_id
-    - name: copying cmak config
-      template:
-        src: "{{ playbook_dir }}/../configs/kafka/cmak.application.conf"
-        dest: /usr/local/cmak-3006/conf/application.conf
-
       # copy config.yaml file for redpanda
       # there is no jinja in this config.yaml
       # configure manually after the installation
-
     - name: copying redpanda config
       template:
         src: "{{ playbook_dir }}/../configs/kafka/redpanda.360.config.yaml"
         dest: /usr/local/redpanda/config.yaml
 
-      # create the /data/zookeeper directory if not exists
-    - name: create data directory
-      shell: |
-        mkdir /data
-      when: not data_dir.stat.exists
-
       # create the /data/kafka directory if not exists
       # if a seperate mountpoint needed, arrange before running this ansible script
     - name: create kafka data directory
       shell: |
-        mkdir /data/kafka
+        mkdir -p /data/kafka
       when: not kafka_data_dir.stat.exists
 
     - name: generate kafka_cluster_id2
@@ -242,11 +210,11 @@
     - name: set kafka ownership to kafka user
       shell: |
         chown -R kafka:kafka /usr/local/kafka-332
-        chown -R kafka:kafka /usr/local/cmak-3006
         chown -R kafka:kafka /usr/local/redpanda
         chown -R kafka:kafka /usr/local/jmx-exporter
         chown -R kafka:kafka /data/kafka    
         chmod 755 /usr/local/kafka-332/bin/kafka-server-start.sh
+        chmod 755 /usr/local/kafka-332/bin/connect-distributed.sh        
 
     - name: copying kafka service config
       copy:
@@ -257,11 +225,6 @@
       copy:
         src: "{{ playbook_dir }}/../configs/kafka/kafka-connect.service"
         dest: /etc/systemd/system/kafka-connect.service
-
-    - name: copying cmak service config
-      copy:
-        src: "{{ playbook_dir }}/../configs/kafka/cmak.service"
-        dest: /etc/systemd/system/cmak.service
 
     - name: copying redpanda service config
       copy:
@@ -281,17 +244,9 @@
         enabled: true
         state: started
 
-    - name: starting cmak with service
-      ansible.builtin.service:
-        name: "cmak.service"
-        enabled: true
-        state: started
-
     - name: starting redpanda with service
       ansible.builtin.service:
         name: "redpanda.service"
         enabled: true
         state: started
-
-
 

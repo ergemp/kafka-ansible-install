@@ -1,7 +1,7 @@
 [Unit]
 Description=redpanda service
 Requires=network.target remote-fs.target
-After=network.target remote-fs.target kafka-connect.service
+After=network.target remote-fs.target kafka.service kafka-connect.service
 
 [Service]
 #Type=exec
